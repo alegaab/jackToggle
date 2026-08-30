@@ -31,44 +31,55 @@ is affected — the keyboard's media keys keep working, and audio is untouched (
 through CoreAudio, not this device).
 
 No `sudo`, no SIP changes, no reboot, no kernel extensions. It toggles instantly, and
-quitting the app restores the button automatically.
+quitting the app restores the button automatically, since the grab lasts only as long
+as the process does.
 
 The one cost is an **Input Monitoring** permission grant.
 
 ## Build and run
 
 ```bash
-./build.sh && open build/JackToggle.app
+./build.sh --install
 ```
 
-Only the Command Line Tools are needed; Xcode is not.
+Builds into `build/`, then replaces `/Applications/JackToggle.app` and relaunches.
+Drop `--install` to build without touching `/Applications`. Only the Command Line
+Tools are needed; Xcode is not.
 
 ## First run
 
-1. Click the headphones icon in the menu bar → **Buttons enabled**.
+1. Click the plug icon in the menu bar → **Button enabled**.
 2. The first toggle fails with a permission prompt — that's expected. Click
    **Open System Settings** and enable JackToggle under
    *Privacy & Security › Input Monitoring*.
-3. Toggle again. The icon becomes `headphones.slash`, and the menu shows
-   "Blocked a press Ns ago" each time you press the inline button.
+3. Toggle again. The icon gains a slash, and the menu shows "Blocked a press Ns ago"
+   each time you press the inline button. That counter is the proof it's intercepting.
 
-## Methods
+**After every rebuild:** the binary is ad-hoc signed, so a rebuild changes its signature
+and macOS drops the Input Monitoring grant. The app notices and quietly switches itself
+off rather than failing. To restore it, remove JackToggle from the Input Monitoring list
+with **−**, then add it back.
 
-**Grab headset device** (default) — the seize described above. Surgical.
+## Icon
 
-**Filter media keys** — fallback, in case seizing turns out not to suppress the
-button on some hardware. It installs a `CGEventTap` and drops play/next/previous
-events. Blunter: those events don't identify their source, so while it's active it
-also swallows the keyboard's play/next/previous keys. It only runs while a headset is
-plugged in, and it needs Accessibility rather than Input Monitoring. Volume and mute
-are never swallowed.
+The glyph is drawn in `PlugIcon.swift` rather than taken from SF Symbols, because macOS
+already uses `headphones` in Control Center and the volume menu — a second one in the
+menu bar reads as a system control. The menu bar image and the `.icns` come from the
+same geometry, so they can't drift; `build.sh` regenerates the iconset on every build.
 
 ## Layout
 
 - `Sources/HeadsetHID.swift` — device matching, seizing, permission checks
-- `Sources/MediaKeyTap.swift` — the event-tap fallback
+- `Sources/PlugIcon.swift` — the plug glyph, menu bar image and app icon
 - `Sources/AppDelegate.swift` — status item, menu, state persistence
-- `build.sh` — compiles and assembles the `.app`, ad-hoc signed
+- `Tools/GenerateIcon.swift` — writes the `.iconset` for `iconutil`
+- `build.sh` — compiles, assembles and ad-hoc signs the `.app`
 
-Rebuilding changes the binary; if macOS drops the Input Monitoring grant after a
-rebuild, remove JackToggle from the list with **−** and re-add it.
+## History
+
+A `CGEventTap` fallback (`MediaKeyTap.swift`) shipped in the first version, in case
+seizing didn't suppress the button. It does suppress it on the CS42L84, so the fallback
+was removed in favour of one code path — it was also the blunter mechanism, since
+media-key events don't identify their source and filtering them took the keyboard's
+own play/next/previous keys with them. See commit `761d448` if it's ever needed for
+different hardware; widening the HID matching would be the better fix.
