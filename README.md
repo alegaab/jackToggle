@@ -73,7 +73,31 @@ same geometry, so they can't drift; `build.sh` regenerates the iconset on every 
 - `Sources/PlugIcon.swift` — the plug glyph, menu bar image and app icon
 - `Sources/AppDelegate.swift` — status item, menu, state persistence
 - `Tools/GenerateIcon.swift` — writes the `.iconset` for `iconutil`
+- `Tools/HIDProbe.swift` — diagnostic, see below
 - `build.sh` — compiles, assembles and ad-hoc signs the `.app`
+
+## Diagnostics
+
+`Tools/HIDProbe.swift` lists every attached HID device with the properties the app
+matches on. It's where the design came from — it's what showed that the inline button
+is its own device rather than part of the keyboard.
+
+```bash
+swiftc -swift-version 5 JackToggle/Tools/HIDProbe.swift -o /tmp/hidprobe && /tmp/hidprobe
+```
+
+Run it first when the grab stops working on unfamiliar hardware (other headsets, a
+USB-C dongle, another Mac): the row for the connected device shows why the matching
+dictionary isn't catching it.
+
+Its first line also reports what `IOHIDManagerOpen` returned, which doubles as an
+outside check on the app:
+
+| | |
+|---|---|
+| `kIOReturnSuccess` | Input Monitoring granted |
+| `kIOReturnNotPermitted` | grant Input Monitoring |
+| `kIOReturnExclusiveAccess` | something already holds a seize — JackToggle is blocking |
 
 ## History
 
