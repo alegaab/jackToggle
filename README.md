@@ -36,6 +36,30 @@ as the process does.
 
 The one cost is an **Input Monitoring** permission grant.
 
+## Other hardware
+
+Transport `Audio` is what makes that match safe to seize blind. It excludes the
+internal keyboard, and it excludes every USB keyboard — those publish their media
+keys on the *same* Consumer page, so the usage pair alone is nowhere near enough.
+A USB-C dongle or USB headset is excluded too, though: its buttons arrive over
+Transport `USB`.
+
+Widening the match to all Consumer Controls would pick those up, and would pick up
+any attached keyboard with them. That is not a symmetric mistake. A seize is
+exclusive, so a wrong match doesn't degrade the feature — it silently kills an
+unrelated device's media keys for as long as the app runs. A missed match just says
+"No headset connected", which is visible and diagnosable with the probe.
+
+So the widening isn't automatic. When something other than the built-in jack is
+attached, the menu grows a **Button source** submenu listing every other Consumer
+Control device by name, and seizes only the one that's picked. The choice is stored as VID/PID and handed back
+to IOKit as a matching dictionary rather than resolved to a device here, so
+replugging re-seizes on its own exactly as the automatic path does.
+
+The usage keys stay in that dictionary. One VID/PID spans several HID devices — the
+internal keyboard is six — and only the Consumer Control one should ever be seized;
+matching on identity alone would take the device's real keys with it.
+
 ## Build and run
 
 ```bash
@@ -69,7 +93,7 @@ same geometry, so they can't drift; `build.sh` regenerates the iconset on every 
 
 ## Layout
 
-- `Sources/HeadsetHID.swift` — device matching, seizing, permission checks
+- `Sources/HeadsetHID.swift` — device matching, target selection, seizing, permissions
 - `Sources/PlugIcon.swift` — the plug glyph, menu bar image and app icon
 - `Sources/AppDelegate.swift` — status item, menu, state persistence
 - `Tools/GenerateIcon.swift` — writes the `.iconset` for `iconutil`
@@ -106,4 +130,5 @@ seizing didn't suppress the button. It does suppress it on the CS42L84, so the f
 was removed in favour of one code path — it was also the blunter mechanism, since
 media-key events don't identify their source and filtering them took the keyboard's
 own play/next/previous keys with them. See commit `761d448` if it's ever needed for
-different hardware; widening the HID matching would be the better fix.
+different hardware, though **Button source** above is the better answer for a
+device the automatic match doesn't reach.
