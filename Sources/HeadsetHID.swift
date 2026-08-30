@@ -107,7 +107,17 @@ final class HeadsetHID {
 
     /// Whether the device the grab is pointed at is plugged in right now.
     func isTargetConnected() -> Bool {
-        !Self.devices(matching: Self.matching(for: target)).isEmpty
+        let matched = !Self.devices(matching: Self.matching(for: target)).isEmpty
+        switch target {
+        case .automatic:
+            // HID presence only says the machine has a jack — the codec publishes
+            // the device with nothing in it. CoreAudio answers the rest.
+            return matched && JackPresence.headphonesPlugged
+        case .manual:
+            // A USB device's HID node really does come and go with the hardware,
+            // so here presence means what it says.
+            return matched
+        }
     }
 
     /// Everything the grab could be pointed at manually, for the menu to offer when

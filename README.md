@@ -60,6 +60,28 @@ The usage keys stay in that dictionary. One VID/PID spans several HID devices �
 internal keyboard is six — and only the Consumer Control one should ever be seized;
 matching on identity alone would take the device's real keys with it.
 
+### Presence comes from CoreAudio, not HID
+
+The codec publishes the jack's HID device whether or not anything is plugged into
+it: `Headset` stays in the device list with the jack empty. HID presence therefore
+means *the machine has a jack*, never *something is in it*.
+
+CoreAudio does know. The built-in output device carries a data source that moves off
+the internal speakers on insert, so `JackPresence` reads that and `isTargetConnected()`
+requires both signals for the automatic target.
+
+That check is written as "not the internal speakers" rather than "is headphones",
+because the source list is dynamic: with the jack empty the built-in output offers
+exactly one source, `ispk` / "MacBook Pro Speakers", and no headphone id is listed at
+all until something is inserted. Testing against the value that can actually be
+observed beats hardcoding one that only exists under the condition being tested.
+
+A manual target needs none of this — a USB dongle's HID node really does come and go
+with the hardware, so there plain HID presence means what it says.
+
+The picker itself is keyed off what else is attached rather than off presence, so it
+stays reachable whatever is in the jack.
+
 ## Build and run
 
 ```bash
@@ -94,6 +116,7 @@ same geometry, so they can't drift; `build.sh` regenerates the iconset on every 
 ## Layout
 
 - `Sources/HeadsetHID.swift` — device matching, target selection, seizing, permissions
+- `Sources/JackPresence.swift` — whether the jack is occupied, via CoreAudio
 - `Sources/PlugIcon.swift` — the plug glyph, menu bar image and app icon
 - `Sources/AppDelegate.swift` — status item, menu, state persistence
 - `Tools/GenerateIcon.swift` — writes the `.iconset` for `iconutil`
@@ -107,14 +130,17 @@ matches on. It's where the design came from — it's what showed that the inline
 is its own device rather than part of the keyboard.
 
 ```bash
-swiftc -swift-version 5 JackToggle/Tools/HIDProbe.swift -o /tmp/hidprobe && /tmp/hidprobe
+swiftc -swift-version 5 -framework CoreAudio JackToggle/Sources/JackPresence.swift JackToggle/Tools/HIDProbe.swift -o /tmp/hidprobe && /tmp/hidprobe
 ```
 
 Run it first when the grab stops working on unfamiliar hardware (other headsets, a
 USB-C dongle, another Mac): the row for the connected device shows why the matching
 dictionary isn't catching it.
 
-Its first line also reports what `IOHIDManagerOpen` returned, which doubles as an
+Its second line reports whether the jack is occupied, which the device rows below
+it cannot tell you — see above for why.
+
+Its first line reports what `IOHIDManagerOpen` returned, which doubles as an
 outside check on the app:
 
 | | |

@@ -27,7 +27,7 @@ rm -rf "$ICONSET" "$ROOT/build/generate-icon"
 # --- app ------------------------------------------------------------------
 swiftc -swift-version 5 -O \
     -target arm64-apple-macos13.0 \
-    -framework AppKit -framework IOKit -framework ServiceManagement \
+    -framework AppKit -framework IOKit -framework CoreAudio -framework ServiceManagement \
     "$ROOT"/Sources/*.swift \
     -o "$APPDIR/Contents/MacOS/$APP"
 
