@@ -68,7 +68,7 @@ the hardware.
 
 Builds into `build/`, then replaces `/Applications/JackToggle.app` and relaunches. Drop
 `--install` to build without touching `/Applications`. Only the Command Line Tools are
-needed; Xcode is not.
+needed; Xcode is not. Requires macOS 13 or later.
 
 ## First run
 
